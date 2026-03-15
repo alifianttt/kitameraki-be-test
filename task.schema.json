@@ -1,31 +1,33 @@
 {
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Task",
   "type": "object",
   "properties": {
     "id": {
       "type": "string",
       "format": "uuid",
-      "description": "Unique identifier for the task"
+      "description": "Unique identifier for the task (auto-generated server-side)"
     },
     "organizationId": {
       "type": "string",
       "format": "uuid",
-      "description": "Unique identifier of the organization to which the task belongs"
+      "description": "Unique identifier of the organisation the task belongs to"
     },
     "title": {
       "type": "string",
+      "minLength": 1,
       "maxLength": 100,
       "description": "Title of the task"
     },
     "description": {
       "type": "string",
       "maxLength": 1000,
-      "description": "Description of the task"
+      "description": "Optional detailed description of the task"
     },
     "dueDate": {
       "type": "string",
       "format": "date-time",
-      "description": "Due date and time for the task"
+      "description": "ISO 8601 due date/time for the task"
     },
     "priority": {
       "type": "string",
@@ -35,7 +37,7 @@
     "status": {
       "type": "string",
       "enum": ["todo", "in-progress", "completed"],
-      "description": "Status of the task"
+      "description": "Current status of the task"
     },
     "tags": {
       "type": "array",
@@ -43,7 +45,7 @@
         "type": "string",
         "maxLength": 50
       },
-      "description": "Tags associated with the task"
+      "description": "Optional tags associated with the task"
     }
   },
   "required": ["id", "organizationId", "title", "status"],

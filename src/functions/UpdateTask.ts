@@ -1,33 +1,29 @@
-import { CosmosClient } from "@azure/cosmos";
 import { app, HttpRequest, HttpResponseInit, InvocationContext } from "@azure/functions";
+import { validateQueryParams, parseJsonBody, formatErrors } from "../middleware/validation";
+import { ok, badRequest, withErrorHandler } from "../middleware/response";
+import { taskQuerySchema, updateTaskSchema, validate } from "../middleware/schemas";
+import { updateTask } from "../services/taskServices";
 
+async function handler(
+    request: HttpRequest,
+    context: InvocationContext
+): Promise<HttpResponseInit> {
+    context.log(`UpdateTask — ${request.url}`);
 
-export async function UpdateTask(request: HttpRequest, context: InvocationContext): Promise<HttpResponseInit> {
-    const body = await request.json() as object;
-    const taskId = request.query.get('id');
-    const organizationId = request.query.get('organizationId');
+    const query = validateQueryParams(request, taskQuerySchema);
+    if (!query.success) return badRequest(formatErrors(query.errors));
 
-    let patchRequests = [];
+    const raw = await parseJsonBody(request);
 
-    for (let key in body) {
-        patchRequests.push({
-            "op": "replace",
-            "path": `/${key}`,
-            "value": body[key]
-        });
-    }
+    const body = validate(updateTaskSchema, raw);
+    if (!body.success) return badRequest(formatErrors(body.errors));
 
-    const client = new CosmosClient("this is a connection string");
-    const createdTask = await client.database("TaskApp")
-        .container("Tasks")
-        .item(taskId, organizationId)
-        .patch(patchRequests);
+    const task = await updateTask(query.data.id, query.data.organizationId, body.data);
+    return ok(task);
+}
 
-    return { jsonBody: createdTask.resource, status: 200 };
-};
-
-app.http('UpdateTask', {
-    methods: ['POST'],
-    authLevel: 'anonymous',
-    handler: UpdateTask
+app.http("UpdateTask", {
+    methods: ["PATCH"],
+    authLevel: "anonymous",
+    handler: withErrorHandler(handler),
 });
