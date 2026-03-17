@@ -27,6 +27,7 @@ export const createTaskSchema = z.object({
     priority:       prioritySchema.optional(),
     status:         statusSchema,
     tags:           z.array(z.string().max(50, "each tag must be 50 characters or fewer")).optional(),
+    customFields:   z.record(z.string(), z.string()).optional()
 });
 
 /**
@@ -42,6 +43,7 @@ export const updateTaskSchema = z
         priority:    prioritySchema.optional(),
         status:      statusSchema.optional(),
         tags:        z.array(z.string().max(50)).optional(),
+        customFields:   z.record(z.string(), z.string()).optional()
     })
     .strict()   // reject unknown keys (e.g. accidental `id` or `organizationId` in body)
     .refine(

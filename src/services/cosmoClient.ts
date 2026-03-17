@@ -1,11 +1,7 @@
 import { CosmosClient, Container } from "@azure/cosmos";
 import { config } from "../utils/config";
-import * as http from "http";
 
-/**
- * Singleton CosmosDB client — avoids creating a new TCP connection on every
- * function invocation (important for Azure Functions cold-start performance).
- */
+
 let _client: CosmosClient | null = null;
 
 function getClient(): CosmosClient {

@@ -3,6 +3,8 @@ import { validateQueryParams, parseJsonBody, formatErrors } from "../middleware/
 import { ok, badRequest, withErrorHandler } from "../middleware/response";
 import { taskQuerySchema, updateTaskSchema, validate } from "../middleware/schemas";
 import { updateTask } from "../services/taskServices";
+import { getFormSettings } from "../services/formSettingsService";
+import { extractCustomFieldConfigs, splitBuiltInAndCustomFields } from "../utils/formSettingParser";
 
 async function handler(
     request: HttpRequest,
@@ -14,8 +16,20 @@ async function handler(
     if (!query.success) return badRequest(formatErrors(query.errors));
 
     const raw = await parseJsonBody(request);
+    const rawRecord = raw as Record<string, unknown>;
 
-    const body = validate(updateTaskSchema, raw);
+    const formSettings = await getFormSettings(query.data.organizationId);
+    const customFieldConfigs = extractCustomFieldConfigs(formSettings.settings);
+
+    const { builtIn, customFields } = splitBuiltInAndCustomFields(
+        rawRecord as Record<string, string>,
+        customFieldConfigs
+    );
+
+    const body = validate(updateTaskSchema, {
+        ...builtIn,
+        ...(Object.keys(customFields).length > 0 && { customFields }),
+    });
     if (!body.success) return badRequest(formatErrors(body.errors));
 
     const task = await updateTask(query.data.id, query.data.organizationId, body.data);

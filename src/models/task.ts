@@ -3,7 +3,6 @@ export type {
     UpdateTaskBody,
 } from "../middleware/schemas";
  
-// Full Task shape (as stored in Cosmos DB)
 import { z } from "zod";
 import { createTaskSchema } from "../middleware/schemas";
  

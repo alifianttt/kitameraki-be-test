@@ -1,11 +1,9 @@
 import { v4 as uuidv4 } from "uuid";
+import { PatchOperation } from "@azure/cosmos";
 import { getTasksContainer } from "./cosmoClient";
 import { Task, CreateTaskBody, UpdateTaskBody } from "../models/task";
 
-/**
- * Fetches all tasks belonging to an organisation.
- * Uses a parameterised query to prevent SQL injection.
- */
+
 export async function listTasks(organizationId: string): Promise<Task[]> {
     const container = getTasksContainer();
     const { resources } = await container.items
@@ -17,14 +15,12 @@ export async function listTasks(organizationId: string): Promise<Task[]> {
     return resources;
 }
 
-/** Fetches a single task by id and partition key. */
 export async function getTask(id: string, organizationId: string): Promise<Task | undefined> {
     const container = getTasksContainer();
     const { resource } = await container.item(id, organizationId).read<Task>();
     return resource;
 }
 
-/** Creates a new task, auto-assigning a UUID. */
 export async function createTask(body: CreateTaskBody): Promise<Task> {
     const container = getTasksContainer();
     const item: Task = { ...body, id: uuidv4() };
@@ -32,7 +28,7 @@ export async function createTask(body: CreateTaskBody): Promise<Task> {
     return resource!;
 }
 
-/** Applies a partial patch to an existing task. */
+
 export async function updateTask(
     id: string,
     organizationId: string,
@@ -40,11 +36,28 @@ export async function updateTask(
 ): Promise<Task> {
     const container = getTasksContainer();
 
-    const patchOperations = Object.entries(body).map(([key, value]) => ({
-        op: "replace" as const,
-        path: `/${key}`,
-        value,
-    }));
+    const { customFields, ...standardFields } = body;
+
+    const patchOperations: PatchOperation[] = [];
+
+    for (const [key, value] of Object.entries(standardFields)) {
+        if (value !== undefined) {
+            patchOperations.push({ op: "set", path: `/${key}`, value });
+        }
+    }
+
+    if (customFields && Object.keys(customFields).length > 0) {
+        const existing = await container.item(id, organizationId).read<Task>();
+        const hasCustomFields = existing.resource?.customFields !== undefined;
+
+        if (!hasCustomFields) {
+            patchOperations.push({ op: "add", path: "/customFields", value: customFields });
+        } else {
+            for (const [key, value] of Object.entries(customFields)) {
+                patchOperations.push({ op: "set", path: `/customFields/${key}`, value });
+            }
+        }
+    }
 
     const { resource } = await container
         .item(id, organizationId)
@@ -53,13 +66,11 @@ export async function updateTask(
     return resource!;
 }
 
-/** Deletes a single task. */
 export async function deleteTask(id: string, organizationId: string): Promise<void> {
     const container = getTasksContainer();
     await container.item(id, organizationId).delete();
 }
 
-/** Deletes multiple tasks concurrently. */
 export async function bulkDeleteTasks(
     ids: string[],
     organizationId: string
